@@ -9,7 +9,7 @@ const PATH_SEARCH = '/search';
 const PARAM_SEARCH = 'query=';
 
 
-const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}`;
+//const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}`;
 
 // the following code is same as the
 
@@ -20,7 +20,7 @@ const url = `${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${DEFAULT_QUERY}`;
 //   }
 // }
 
-const isSearched = searchTerm => item => item.title.toLowerCase().includes(searchTerm.toLowerCase());
+//const isSearched = searchTerm => item => item.title.toLowerCase().includes(searchTerm.toLowerCase());
 
 
 
@@ -94,13 +94,21 @@ class Button extends Component {
 // Simplified with arrow notation.
 
 
-const Search = ({ value, onChange, children }) =>
-  <form>
-    {children} <input
+const Search = ({
+  value,
+  onChange,
+  onSubmit,
+  children
+}) =>
+  <form onSubmit={onSubmit}>
+    <input
       type="text"
       value={value}
       onChange={onChange}
     />
+    <button type="submit">
+      {children}
+    </button>
   </form>
 
 // As class component
@@ -129,7 +137,7 @@ const Search = ({ value, onChange, children }) =>
 //     );
 //   }
 // }
-
+/*
 const Table = ({ list, pattern, onDismiss }) =>
   <div className="table">
     {list.filter(isSearched(pattern)).map(item =>
@@ -157,7 +165,35 @@ const Table = ({ list, pattern, onDismiss }) =>
       </div>
     )}
   </div>
+*/
 
+const Table = ({ list, onDismiss }) =>
+  <div className="table">
+    {list.map(item =>
+      <div key={item.objectID} className="table-row">
+        <span style={{ width: '40%' }}>
+          <a href={item.url}>{item.title}</a>
+        </span>
+        <span style={{ width: '30%' }}>
+          {item.author}
+        </span>
+        <span style={{ width: '10%' }}>
+          {item.num_comments}
+        </span>
+        <span style={{ width: '10%' }}>
+          {item.points}
+        </span>
+        <span style={{ width: '10%' }}>
+          <Button
+            onClick={() => onDismiss(item.objectID)}
+            className="button-inline"
+          >
+            Dismiss
+          </Button>
+        </span>
+      </div>
+    )}
+  </div>
 class App extends Component {
 
   constructor(props) {
@@ -167,18 +203,26 @@ class App extends Component {
       searchTerm: DEFAULT_QUERY,
     };
     this.setSearchTopStories = this.setSearchTopStories.bind(this);
+    this.fetchSearchTopStories = this.fetchSearchTopStories.bind(this);
+    this.onSearchSubmit = this.onSearchSubmit.bind(this);
     this.onSearchChange = this.onSearchChange.bind(this);
     this.onDismiss = this.onDismiss.bind(this);
   }
+
   setSearchTopStories(result) {
     this.setState({ result });
   }
-  componentDidMount() {
-    const { searchTerm } = this.state;
+
+  fetchSearchTopStories(searchTerm) {
     fetch(`${PATH_BASE}${PATH_SEARCH}?${PARAM_SEARCH}${searchTerm}`)
       .then(response => response.json())
       .then(result => this.setSearchTopStories(result))
       .catch(error => error);
+  }
+
+  componentDidMount() {
+    const { searchTerm } = this.state;
+    this.fetchSearchTopStories(searchTerm);
   }
 
   // onDismiss(id) {
@@ -187,8 +231,21 @@ class App extends Component {
   // }
 
   onDismiss(id) {
-    const updatedList = this.state.list.filter(item => item.objectID !== id);
-    this.setState({ list: updatedList });
+    const isNotId = item => item.objectID !== id;
+    const updatedHits = this.state.result.hits.filter(isNotId);
+    this.setState({
+      /*
+      This is called a "spread operator" shown with three dots: ... When it is used, every value from an array or object gets copied to another array or object
+          const userNames = { firstname: 'Robin', lastname: 'Wieruch' };
+          const age = 28;
+          const user = { ...userNames, age };
+          console.log(user);
+          output: { firstname: 'Robin', lastname: 'Wieruch', age: 28 }
+      */
+
+
+      result: { ...this.state.result, hits: updatedHits }
+    });
   }
 
   onSearchChange(event) {
@@ -196,6 +253,14 @@ class App extends Component {
       { searchTerm: event.target.value }
     )
   }
+
+
+  onSearchSubmit(event) {
+    const { searchTerm } = this.state;
+    this.fetchSearchTopStories(searchTerm);
+    event.preventDefault();
+  }
+
 
 
   render() {
@@ -207,7 +272,7 @@ class App extends Component {
 
 
     // In the initial call the result is not present since the call is made asynchronously
-    if (!result) { return null; }
+    // if (!result) { return null; }
 
     return (
       <div className="page">
@@ -215,16 +280,19 @@ class App extends Component {
           <Search
             value={searchTerm}
             onChange={this.onSearchChange}
+            onSubmit={this.onSearchSubmit}
           >
-
             Search
-          </Search>
+        </Search>
         </div>
-        <Table
-          list={result.hits}
-          pattern={searchTerm}
-          onDismiss={this.onDismiss}
-        />
+        { result
+          ? <Table
+            list={result.hits}
+            //   pattern={searchTerm}
+            onDismiss={this.onDismiss}
+          />
+          : null
+        }
       </div>
     );
   }
